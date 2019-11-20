@@ -87,27 +87,27 @@ module tcdm_interconnect #(
   ////////////////////////////////////////////////////////////////////////
   if (Topology == tcdm_interconnect_pkg::LIC) begin : gen_lic
     xbar #(
-      .NumIn         ( NumIn        ),
-      .NumOut        ( NumOut       ),
-      .ReqDataWidth  ( AggDataWidth ),
-      .RespDataWidth ( DataWidth    ),
-      .RespLat       ( RespLat      ),
-      .WriteRespOn   ( WriteRespOn  )
+      .NumIn        (NumIn       ),
+      .NumOut       (NumOut      ),
+      .ReqDataWidth (AggDataWidth),
+      .RespDataWidth(DataWidth   ),
+      .RespLat      (RespLat     ),
+      .WriteRespOn  (WriteRespOn )
     ) i_xbar (
-      .clk_i   ( clk_i        ),
-      .rst_ni  ( rst_ni       ),
-      .req_i   ( req_i        ),
-      .add_i   ( bank_sel     ),
-      .wen_i   ( wen_i        ),
-      .wdata_i ( data_agg_in  ),
-      .gnt_o   ( gnt_o        ),
-      .rdata_o ( rdata_o      ),
-      .rr_i    ( '0           ),
-      .vld_o   ( vld_o        ),
-      .gnt_i   ( gnt_i        ),
-      .req_o   ( req_o        ),
-      .wdata_o ( data_agg_out ),
-      .rdata_i ( rdata_i      )
+      .clk_i  (clk_i       ),
+      .rst_ni (rst_ni      ),
+      .req_i  (req_i       ),
+      .add_i  (bank_sel    ),
+      .wen_i  (wen_i       ),
+      .wdata_i(data_agg_in ),
+      .gnt_o  (gnt_o       ),
+      .rdata_o(rdata_o     ),
+      .rr_i   ('0          ),
+      .vld_o  (vld_o       ),
+      .gnt_i  (gnt_i       ),
+      .req_o  (req_o       ),
+      .wdata_o(data_agg_out),
+      .rdata_i(rdata_i     )
     );
   ////////////////////////////////////////////////////////////////////////
   // butterfly network (radix 2 or 4) with parallelization option
@@ -133,15 +133,15 @@ module tcdm_interconnect #(
     // pseudo random sequence with good randomness. the block cipher layers
     // are used to break shift register linearity.
     lfsr #(
-      .LfsrWidth(64),
-      .OutWidth($clog2(NumIn)),
-      .CipherLayers(3),
-      .CipherReg(1'b1)
+      .LfsrWidth   (64           ),
+      .OutWidth    ($clog2(NumIn)),
+      .CipherLayers(3            ),
+      .CipherReg   (1'b1         )
     ) lfsr_i (
-      .clk_i,
-      .rst_ni,
-      .en_i(|(gnt_i & req_o)),
-      .out_o(rr)
+      .clk_i                   ,
+      .rst_ni                  ,
+      .en_i  (|(gnt_i & req_o)),
+      .out_o (rr              )
     );
 
     // // this performs a density estimation of the lfsr output
@@ -240,21 +240,21 @@ module tcdm_interconnect #(
 
       for (genvar k = 0; unsigned'(k) < NumOut; k++) begin : gen_par
         rr_arb_tree #(
-          .NumIn     ( NumPar       ),
-          .DataWidth ( AggDataWidth ),
-          .ExtPrio   ( 1'b1         )
+          .NumIn    (NumPar      ),
+          .DataWidth(AggDataWidth),
+          .ExtPrio  (1'b1        )
         ) i_rr_arb_tree (
-          .clk_i   ( clk_i           ),
-          .rst_ni  ( rst_ni          ),
-          .flush_i ( 1'b0            ),
-          .rr_i    ( rr2             ),
-          .req_i   ( req1[k]         ),
-          .gnt_o   ( gnt1[k]         ),
-          .data_i  ( data1[k]        ),
-          .gnt_i   ( gnt_i[k]        ),
-          .req_o   ( req_o[k]        ),
-          .data_o  ( data_agg_out[k] ),
-          .idx_o   (                 )// disabled
+          .clk_i  (clk_i          ),
+          .rst_ni (rst_ni         ),
+          .flush_i(1'b0           ),
+          .rr_i   (rr2            ),
+          .req_i  (req1[k]        ),
+          .gnt_o  (gnt1[k]        ),
+          .data_i (data1[k]       ),
+          .gnt_i  (gnt_i[k]       ),
+          .req_o  (req_o[k]       ),
+          .data_o (data_agg_out[k]),
+          .idx_o  (               )  // disabled
         );
       end
     end else begin : gen_no_rr_arb
@@ -274,27 +274,27 @@ module tcdm_interconnect #(
   ////////////////////////////////////////////////////////////////////////
   end else if (Topology == tcdm_interconnect_pkg::CLOS) begin : gen_clos
     clos_net #(
-      .NumIn         ( NumIn        ),
-      .NumOut        ( NumOut       ),
-      .ReqDataWidth  ( AggDataWidth ),
-      .RespDataWidth ( DataWidth    ),
-      .RespLat       ( RespLat      ),
-      .WriteRespOn   ( WriteRespOn  ),
-      .ClosConfig    ( ClosConfig   )
+      .NumIn        (NumIn       ),
+      .NumOut       (NumOut      ),
+      .ReqDataWidth (AggDataWidth),
+      .RespDataWidth(DataWidth   ),
+      .RespLat      (RespLat     ),
+      .WriteRespOn  (WriteRespOn ),
+      .ClosConfig   (ClosConfig  )
     ) i_clos_net (
-      .clk_i    ( clk_i        ),
-      .rst_ni   ( rst_ni       ),
-      .req_i    ( req_i        ),
-      .gnt_o    ( gnt_o        ),
-      .add_i    ( bank_sel     ),
-      .wen_i    ( wen_i        ),
-      .wdata_i  ( data_agg_in  ),
-      .rdata_o  ( rdata_o      ),
-      .vld_o    ( vld_o        ),
-      .req_o    ( req_o        ),
-      .gnt_i    ( gnt_i        ),
-      .wdata_o  ( data_agg_out ),
-      .rdata_i  ( rdata_i      )
+      .clk_i  (clk_i       ),
+      .rst_ni (rst_ni      ),
+      .req_i  (req_i       ),
+      .gnt_o  (gnt_o       ),
+      .add_i  (bank_sel    ),
+      .wen_i  (wen_i       ),
+      .wdata_i(data_agg_in ),
+      .rdata_o(rdata_o     ),
+      .vld_o  (vld_o       ),
+      .req_o  (req_o       ),
+      .gnt_i  (gnt_i       ),
+      .wdata_o(data_agg_out),
+      .rdata_i(rdata_i     )
     );
   ////////////////////////////////////////////////////////////////////////
   end else begin : gen_unknown
@@ -315,7 +315,7 @@ module tcdm_interconnect #(
   initial begin
     assert(AddrMemWidth+NumOutLog2 <= AddrWidth) else
       $fatal(1,"Address not wide enough to accomodate the requested TCDM configuration.");
-    assert(NumOut >= NumIn) else
+    assert(Topology == tcdm_interconnect_pkg::LIC || NumOut >= NumIn) else
       $fatal(1,"NumOut < NumIn is not supported.");
   end
   // pragma translate_on
