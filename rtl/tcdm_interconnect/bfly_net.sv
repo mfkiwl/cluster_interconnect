@@ -20,14 +20,15 @@
 // non-power-of-radix parameterizations.
 
 module bfly_net #(
-    parameter int unsigned NumIn         = 32  , // number of requestors, needs to be a power of 2
-    parameter int unsigned NumOut        = 32  , // number of targets, needs to be a power of 2
-    parameter int unsigned ReqDataWidth  = 32  , // word width of data
-    parameter int unsigned RespDataWidth = 32  , // word width of data
-    parameter int unsigned RespLat       = 1   , // response latency of slaves
-    parameter bit          WriteRespOn   = 1   , // defines whether the interconnect returns a write response
-    parameter bit          ExtPrio       = 1'b0, // enable external prio flag input
-    parameter int unsigned Radix         = 2     // currently supported: 2 or 4
+    parameter int unsigned NumIn          = 32  , // number of requestors, needs to be a power of 2
+    parameter int unsigned NumOut         = 32  , // number of targets, needs to be a power of 2
+    parameter int unsigned ReqDataWidth   = 32  , // word width of data
+    parameter int unsigned RespDataWidth  = 32  , // word width of data
+    parameter int unsigned RespLat        = 1   , // response latency of slaves
+    parameter bit          WriteRespOn    = 1   , // defines whether the interconnect returns a write response
+    parameter bit          ExtPrio        = 1'b0, // enable external prio flag input
+    parameter int unsigned Radix          = 2   , // currently supported: 2 or 4
+    parameter int unsigned NumExtraStages = 0     // number of extra crossbar stages
 ) (
   input  logic                                          clk_i  ,
   input  logic                                          rst_ni ,
@@ -49,29 +50,29 @@ module bfly_net #(
 );
 
   ////////////////////////////////////////////////////////////////////////
-  // network I/O and inter-level wiring
+  // network I/O and inter-stage wiring
   ////////////////////////////////////////////////////////////////////////
   localparam int unsigned AddWidth     = $clog2(NumOut);
   localparam int unsigned NumRouters   = NumOut/Radix;
-  localparam int unsigned NumLevels    = ($clog2(NumOut)+$clog2(Radix)-1)/$clog2(Radix);
+  localparam int unsigned NumStages    = ($clog2(NumOut)+$clog2(Radix)-1)/$clog2(Radix) + NumExtraStages;
   localparam int unsigned BankFact     = NumOut/NumIn;
   // check if the Radix-4 network needs a Radix-2 stage
   localparam bit NeedsR2Stage          = 1'(($clog2(NumOut) % 2) * int'(Radix == unsigned'(4)));
 
   /* verilator lint_off UNOPTFLAT */
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0]                    router_req_in       ;
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0]                    router_req_out      ;
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0]                    router_gnt_in       ;
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0]                    router_gnt_out      ;
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][     AddWidth-1:0] router_add_in       ;
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][     AddWidth-1:0] router_add_out      ;
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][ ReqDataWidth-1:0] router_data_in      ;
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][ ReqDataWidth-1:0] router_data_out     ;
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][RespDataWidth-1:0] router_resp_data_in ;
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][RespDataWidth-1:0] router_resp_data_out;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0]                    router_req_in       ;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0]                    router_req_out      ;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0]                    router_gnt_in       ;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0]                    router_gnt_out      ;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][     AddWidth-1:0] router_add_in       ;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][     AddWidth-1:0] router_add_out      ;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][ ReqDataWidth-1:0] router_data_in      ;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][ ReqDataWidth-1:0] router_data_out     ;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][RespDataWidth-1:0] router_resp_data_in ;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][RespDataWidth-1:0] router_resp_data_out;
   /* verilator lint_on UNOPTFLAT */
 
-  // // inputs are on first level
+  // inputs are on the first stage
   // make sure to evenly distribute masters in case of BankFactors > 1
   for (genvar j = 0; unsigned'(j) < Radix*NumRouters; j++) begin : gen_inputs
     // leave out input connections in interleaved way until we reach the radix
@@ -111,28 +112,28 @@ module bfly_net #(
     end
   end
 
-  // outputs are on last level
+  // outputs are on last stage
   for (genvar j = 0; unsigned'(j) < Radix*NumRouters; j++) begin : gen_outputs
     if (j < NumOut) begin : gen_connect
       // req
-      assign req_o[j]                                           = router_req_out[NumLevels-1][j/Radix][j%Radix];
-      assign router_gnt_in[NumLevels-1][j/Radix][j%Radix]       = gnt_i[j];
-      assign wdata_o[j]                                         = router_data_out[NumLevels-1][j/Radix][j%Radix];
+      assign req_o[j]                                           = router_req_out[NumStages-1][j/Radix][j%Radix];
+      assign router_gnt_in[NumStages-1][j/Radix][j%Radix]       = gnt_i[j];
+      assign wdata_o[j]                                         = router_data_out[NumStages-1][j/Radix][j%Radix];
       // resp
-      assign router_resp_data_in[NumLevels-1][j/Radix][j%Radix] = rdata_i[j];
+      assign router_resp_data_in[NumStages-1][j/Radix][j%Radix] = rdata_i[j];
     end else begin : gen_tie_off
       // req
-      assign router_gnt_in[NumLevels-1][j/Radix][j%Radix]       = 1'b0;
+      assign router_gnt_in[NumStages-1][j/Radix][j%Radix]       = 1'b0;
       // resp
-      assign router_resp_data_in[NumLevels-1][j/Radix][j%Radix] = '0;
+      assign router_resp_data_in[NumStages-1][j/Radix][j%Radix] = '0;
     end
   end
 
-  // wire up connections between levels
-  for (genvar l = 0; unsigned'(l) < NumLevels-1; l++) begin : gen_levels
+  // wire up connections between Stages
+  for (genvar l = 0; unsigned'(l) < NumStages-1; l++) begin : gen_Stages
     // need to add a radix-2 stage in this case
-    if (l == 0 && NeedsR2Stage) begin : gen_r4r2_level
-      localparam int unsigned pow = 2*Radix**(NumLevels-unsigned'(l)-2);
+    if (l == 0 && NeedsR2Stage) begin : gen_r4r2_stage
+      localparam int unsigned pow = 2*Radix**(NumStages-unsigned'(l)-2);
 
       for (genvar r = 0; unsigned'(r) < 2*NumRouters; r++) begin : gen_routers
         for (genvar s = 0; unsigned'(s) < 2; s++) begin : gen_ports
@@ -146,11 +147,11 @@ module bfly_net #(
           assign router_resp_data_in[l][r/2][(r%2)*2+s] = router_resp_data_out[l+1][k/2][(k%2)*2+j];
         end
       end
-    end else begin : gen_std_level
-      localparam int unsigned pow = Radix**(NumLevels-unsigned'(l)-2);
+    end else begin : gen_std_stage
+      localparam int unsigned pow = Radix**(NumStages-unsigned'(l)-2);
 
-      for (genvar r = 0; unsigned'(r) < NumRouters; r++) begin : gen_routers
-        for (genvar s = 0; unsigned'(s) < Radix; s++) begin : gen_ports
+      for (genvar s = 0; unsigned'(s) < Radix; s++) begin : gen_routers
+        for (genvar r = 0; unsigned'(r) < NumRouters; r++) begin : gen_ports
           localparam int unsigned k = pow * s + (r % pow) + (r / pow / Radix) * pow * Radix;
           localparam int unsigned j = (r / pow) % Radix;
 
@@ -207,14 +208,14 @@ module bfly_net #(
   ////////////////////////////////////////////////////////////////////////
   // crossbars
   ////////////////////////////////////////////////////////////////////////
-  logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][AddWidth+ReqDataWidth-1:0] data_in, data_out;
+  logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][AddWidth+ReqDataWidth-1:0] data_in, data_out;
 
-  for (genvar l = 0; unsigned'(l) < NumLevels; l++) begin : gen_routers1
+  for (genvar l = 0; unsigned'(l) < NumStages; l++) begin : gen_routers1
     for (genvar r = 0; unsigned'(r) < NumRouters; r++) begin : gen_routers2
       // need to add a radix-2 stage in this case
-      if (l == 0 && NeedsR2Stage) begin : gen_r4r2_level
-        logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][0:0] add;
-        logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][0:0] prio;
+      if (l == 0 && NeedsR2Stage) begin : gen_r4r2_stage
+        logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][0:0] add;
+        logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][0:0] prio;
 
         for (genvar k = 0; k < Radix; k++) begin : gen_map
           assign add[l][r][k]  = router_add_in[l][r][k][AddWidth-1];
@@ -250,9 +251,9 @@ module bfly_net #(
           );
         end
       // instantiate switchbox of chosen Radix
-      end else begin : gen_std_level
-        logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][$clog2(Radix)-1:0] add;
-        logic [NumLevels-1:0][NumRouters-1:0][Radix-1:0][$clog2(Radix)-1:0] prio;
+      end else begin : gen_std_stage
+        logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][$clog2(Radix)-1:0] add;
+        logic [NumStages-1:0][NumRouters-1:0][Radix-1:0][$clog2(Radix)-1:0] prio;
 
         for (genvar k = 0; unsigned'(k) < Radix; k++) begin : gen_map
           assign add[l][r][k]        = router_add_in[l][r][k][AddWidth-1:AddWidth-$clog2(Radix)];
@@ -308,8 +309,8 @@ module bfly_net #(
   // pragma translate_off
   initial begin
     // some more info for debug purposes:
-    // $display("\nBfly Net info:\nNumIn=%0d\nNumOut=%0d\nBankFact=%0d\nRadix=%0d\nNeedsR2Stage=%0d\nNumRouters=%0d\nNumLevels=%0d\n",
-    //   NumIn, NumOut, BankFact, Radix, NeedsR2Stage, NumRouters, NumLevels);
+    // $display("\nBfly Net info:\nNumIn=%0d\nNumOut=%0d\nBankFact=%0d\nRadix=%0d\nNeedsR2Stage=%0d\nNumRouters=%0d\nNumStages=%0d\n",
+    //   NumIn, NumOut, BankFact, Radix, NeedsR2Stage, NumRouters, NumStages);
 
     assert(Radix inside {2,4}) else
       $fatal(1,"Only Radix-2 and Radix-4 is supported.");

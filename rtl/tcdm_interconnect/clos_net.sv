@@ -125,11 +125,11 @@ module clos_net #(
 
 
   if (ClosR > unsigned'(1)) begin : gen_rr_mid
-    assign rr_mid     = {ClosR{rr[$clog2(ClosR*ClosM)-1:$clog2(ClosM)]}};
+    assign rr_mid = {ClosR{rr[$clog2(ClosR*ClosM)-1:$clog2(ClosM)]}};
   end
 
   if (ClosM > unsigned'(1)) begin : gen_rr_egr
-    assign rr_egr     = {ClosN{rr[$clog2(ClosM)-1:0]}};
+    assign rr_egr = {ClosN{rr[$clog2(ClosM)-1:0]}};
   end
 
   // Although round robin arbitration works in some cases, it
@@ -138,15 +138,15 @@ module clos_net #(
   // pseudo random sequence with good randomness. the block cipher layers
   // are used to break shift register linearity.
   lfsr #(
-    .LfsrWidth(64),
-    .OutWidth($clog2(ClosM*ClosR)),
-    .CipherLayers(3),
-    .CipherReg(1'b1)
+    .LfsrWidth   (64                 ),
+    .OutWidth    ($clog2(ClosM*ClosR)),
+    .CipherLayers(3                  ),
+    .CipherReg   (1'b1               )
   ) lfsr_i (
-    .clk_i,
-    .rst_ni,
-    .en_i(|(gnt_i & req_o)),
-    .out_o(rr)
+    .clk_i                   ,
+    .rst_ni                  ,
+    .en_i  (|(gnt_i & req_o)),
+    .out_o (rr              )
   );
 
   ////////////////////////////////////////////////////////////////////////
@@ -155,81 +155,81 @@ module clos_net #(
 
   for (genvar r = 0; unsigned'(r) < ClosR; r++) begin : gen_ingress
     xbar #(
-      .NumIn         ( NumInNode                     ),
-      .NumOut        ( ClosM                         ),
-      .ReqDataWidth  ( ReqDataWidth + $clog2(NumOut) ),
-      .RespDataWidth ( RespDataWidth                 ),
-      .RespLat       ( RespLat                       ),
-      .WriteRespOn   ( WriteRespOn                   ),
-      .ExtPrio       ( 1'b0                          ),
-      .BroadCastOn   ( 1'b1                          )
+      .NumIn        (NumInNode                    ),
+      .NumOut       (ClosM                        ),
+      .ReqDataWidth (ReqDataWidth + $clog2(NumOut)),
+      .RespDataWidth(RespDataWidth                ),
+      .RespLat      (RespLat                      ),
+      .WriteRespOn  (WriteRespOn                  ),
+      .ExtPrio      (1'b0                         ),
+      .BroadCastOn  (1'b1                         )
     ) i_ingress_node (
-      .clk_i   ( clk_i                                 ),
-      .rst_ni  ( rst_ni                                ),
-      .req_i   ( req_i[NumInNode * r +: NumInNode]     ),
-      .add_i   ( '0                                    ),// ingress nodes perform broadcast
-      .wen_i   ( wen_i[NumInNode * r +: NumInNode]     ),
-      .wdata_i ( add_wdata[NumInNode * r +: NumInNode] ),
-      .gnt_o   ( gnt_o[NumInNode * r +: NumInNode]     ),
-      .vld_o   ( vld_o[NumInNode * r +: NumInNode]     ),
-      .rdata_o ( rdata_o[NumInNode * r +: NumInNode]   ),
-      .rr_i    ( '0                                    ),
-      .gnt_i   ( ingress_gnt[r]                        ),
-      .req_o   ( ingress_req[r]                        ),
-      .wdata_o ( ingress_req_data[r]                   ),
-      .rdata_i ( ingress_resp_data[r]                  )
+      .clk_i  (clk_i                                ),
+      .rst_ni (rst_ni                               ),
+      .req_i  (req_i[NumInNode * r +: NumInNode]    ),
+      .add_i  ('0                                   ), // ingress nodes perform broadcast
+      .wen_i  (wen_i[NumInNode * r +: NumInNode]    ),
+      .wdata_i(add_wdata[NumInNode * r +: NumInNode]),
+      .gnt_o  (gnt_o[NumInNode * r +: NumInNode]    ),
+      .vld_o  (vld_o[NumInNode * r +: NumInNode]    ),
+      .rdata_o(rdata_o[NumInNode * r +: NumInNode]  ),
+      .rr_i   ('0                                   ),
+      .gnt_i  (ingress_gnt[r]                       ),
+      .req_o  (ingress_req[r]                       ),
+      .wdata_o(ingress_req_data[r]                  ),
+      .rdata_i(ingress_resp_data[r]                 )
     );
   end
 
   for (genvar m = 0; unsigned'(m) < ClosM; m++) begin : gen_middle
     xbar #(
-      .NumIn         ( ClosR                          ),
-      .NumOut        ( ClosR                          ),
-      .ReqDataWidth  ( ReqDataWidth  + $clog2(ClosN)  ),
-      .RespDataWidth ( RespDataWidth                  ),
-      .RespLat       ( RespLat                        ),
-      .ExtPrio       ( 1'(ClosR > unsigned'(1))       )
+      .NumIn        (ClosR                        ),
+      .NumOut       (ClosR                        ),
+      .ReqDataWidth (ReqDataWidth  + $clog2(ClosN)),
+      .RespDataWidth(RespDataWidth                ),
+      .RespLat      (RespLat                      ),
+      .ExtPrio      (1'(ClosR > unsigned'(1))     )
     ) i_mid_node (
-      .clk_i   ( clk_i                   ),
-      .rst_ni  ( rst_ni                  ),
-      .req_i   ( middle_req_in[m]        ),
-      .add_i   ( middle_add_in[m]        ),
-      .wen_i   ( ClosR'(0)               ),
-      .wdata_i ( middle_req_data_in[m]   ),
-      .gnt_o   ( middle_gnt_out[m]       ),
-      .vld_o   (                         ),
-      .rdata_o ( middle_resp_data_out[m] ),
-      .rr_i    ( rr_mid                  ),
-      .gnt_i   ( middle_gnt_in[m]        ),
-      .req_o   ( middle_req_out[m]       ),
-      .wdata_o ( middle_req_data_out[m]  ),
-      .rdata_i ( middle_resp_data_in[m]  )
+      .clk_i  (clk_i                  ),
+      .rst_ni (rst_ni                 ),
+      .req_i  (middle_req_in[m]       ),
+      .add_i  (middle_add_in[m]       ),
+      .wen_i  (ClosR'(0)              ),
+      .wdata_i(middle_req_data_in[m]  ),
+      .gnt_o  (middle_gnt_out[m]      ),
+      .vld_o  (                       ),
+      .rdata_o(middle_resp_data_out[m]),
+      .rr_i   (rr_mid                 ),
+      .gnt_i  (middle_gnt_in[m]       ),
+      .req_o  (middle_req_out[m]      ),
+      .wdata_o(middle_req_data_out[m] ),
+      .rdata_i(middle_resp_data_in[m] )
     );
   end
 
   for (genvar r = 0; unsigned'(r) < ClosR; r++) begin : gen_egress
     xbar #(
-      .NumIn         ( ClosM                    ),
-      .NumOut        ( ClosN                    ),
-      .ReqDataWidth  ( ReqDataWidth             ),
-      .RespDataWidth ( RespDataWidth            ),
-      .RespLat       ( RespLat                  ),
-      .ExtPrio       ( 1'(ClosM > unsigned'(1)) )
+      .NumIn        (ClosM                   ),
+      .NumOut       (ClosN                   ),
+      .ReqDataWidth (ReqDataWidth            ),
+      .RespDataWidth(RespDataWidth           ),
+      .RespLat      (RespLat                 ),
+      .ExtPrio      (1'(ClosM > unsigned'(1)))
     ) i_egress_node (
-      .clk_i   ( clk_i                       ),
-      .rst_ni  ( rst_ni                      ),
-      .req_i   ( egress_req[r]               ),
-      .add_i   ( egress_add[r]               ),
-      .wen_i   ( ClosM'(0)                   ),
-      .wdata_i ( egress_req_data[r]          ),
-      .gnt_o   ( egress_gnt[r]               ),
-      .vld_o   (                             ),
-      .rdata_o ( egress_resp_data[r]         ),
-      .rr_i    ( rr_egr                      ),
-      .gnt_i   ( gnt_i[ClosN * r +: ClosN]   ),
-      .req_o   ( req_o[ClosN * r +: ClosN]   ),
-      .wdata_o ( wdata_o[ClosN * r +: ClosN] ),
-      .rdata_i ( rdata_i[ClosN * r +: ClosN] )
+      .clk_i  (clk_i                      ),
+      .rst_ni (rst_ni                     ),
+      .req_i  (egress_req[r]              ),
+      .add_i  (egress_add[r]              ),
+      .wen_i  (ClosM'(0)                  ),
+      .wdata_i(egress_req_data[r]         ),
+      .gnt_o  (egress_gnt[r]              ),
+      .vld_o  (                           ),
+      .rdata_o(egress_resp_data[r]        ),
+      .rr_i   (rr_egr                     ),
+      .gnt_i  (gnt_i[ClosN * r +: ClosN]  ),
+      .req_o  (req_o[ClosN * r +: ClosN]  ),
+      .wdata_o(wdata_o[ClosN * r +: ClosN]),
+      .rdata_i(rdata_i[ClosN * r +: ClosN])
     );
   end
 

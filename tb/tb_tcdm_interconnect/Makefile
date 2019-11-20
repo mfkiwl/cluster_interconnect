@@ -53,7 +53,7 @@ batch-config := $(shell cat $(batch-list) | grep -v '\#' | cut -d - -f 1-)
 
 build: clean
 	vlib${questa-ver} $(library)
-	vlog${questa-ver} -work $(library) -pedanticerrors $(src) $(tb-src) $(compile_flag) +incdir+$(incdir)
+	bender vsim -t rtl -t asic -t tcdm_test --flag "\-timescale=1ps/1ps" -b .
 
 # this starts modelsim with gui
 sim: build
