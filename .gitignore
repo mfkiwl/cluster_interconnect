@@ -1,3 +1,6 @@
 .bender
 Bender.lock
 build/
+deps
+*dvt*
+.project
