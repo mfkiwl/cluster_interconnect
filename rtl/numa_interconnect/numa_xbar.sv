@@ -23,24 +23,25 @@ module numa_xbar #(
   ) (
     input  logic                                 clk_i,
     input  logic                                 rst_ni,
-    input  logic [NumOut-1:0][$clog2(NumIn)-1:0] rr_i,    // External priority signal
+    input  logic [NumOut-1:0][$clog2(NumIn)-1:0] rr_i,     // External priority signal
+    input  logic [NumIn-1:0][$clog2(NumOut)-1:0] rr_ret_i, // External priority signal (return path)
     // Master side
-    input  logic [NumIn-1:0]                     req_i,   // Request signal
-    output logic [NumIn-1:0]                     gnt_o,   // Grant signal
-    input  logic [NumIn-1:0][$clog2(NumOut)-1:0] add_i,   // Bank address
-    input  logic [NumIn-1:0][ReqDataWidth-1:0]   wdata_i, // Write data
-    output logic [NumIn-1:0]                     vld_o,   // Response valid
-    input  logic [NumIn-1:0]                     rdy_i,   // Response ready
-    output logic [NumIn-1:0][RespDataWidth-1:0]  rdata_o, // Data response (for load commands)
+    input  logic [NumIn-1:0]                     req_i,    // Request signal
+    output logic [NumIn-1:0]                     gnt_o,    // Grant signal
+    input  logic [NumIn-1:0][$clog2(NumOut)-1:0] add_i,    // Bank address
+    input  logic [NumIn-1:0][ReqDataWidth-1:0]   wdata_i,  // Write data
+    output logic [NumIn-1:0]                     vld_o,    // Response valid
+    input  logic [NumIn-1:0]                     rdy_i,    // Response ready
+    output logic [NumIn-1:0][RespDataWidth-1:0]  rdata_o,  // Data response (for load commands)
     // slave side
-    output logic [NumOut-1:0]                    req_o,   // Request signal
-    output logic [NumOut-1:0][$clog2(NumIn)-1:0] idx_o,   // Master address
-    input  logic [NumOut-1:0]                    gnt_i,   // Grant signal
-    output logic [NumOut-1:0][ReqDataWidth-1:0]  wdata_o, // Write data
-    input  logic [NumOut-1:0]                    vld_i,   // Response valid
-    output logic [NumOut-1:0]                    rdy_o,   // Response ready
-    input  logic [NumOut-1:0][$clog2(NumIn)-1:0] idx_i,   // Master address
-    input  logic [NumOut-1:0][RespDataWidth-1:0] rdata_i  // Data response (for load commands)
+    output logic [NumOut-1:0]                    req_o,    // Request signal
+    output logic [NumOut-1:0][$clog2(NumIn)-1:0] idx_o,    // Master address
+    input  logic [NumOut-1:0]                    gnt_i,    // Grant signal
+    output logic [NumOut-1:0][ReqDataWidth-1:0]  wdata_o,  // Write data
+    input  logic [NumOut-1:0]                    vld_i,    // Response valid
+    output logic [NumOut-1:0]                    rdy_o,    // Response ready
+    input  logic [NumOut-1:0][$clog2(NumIn)-1:0] idx_i,    // Master address
+    input  logic [NumOut-1:0][RespDataWidth-1:0] rdata_i   // Data response (for load commands)
   );
 
   /***********
@@ -73,20 +74,20 @@ module numa_xbar #(
     .NumIn      ( NumOut        ),
     .NumOut     ( NumIn         ),
     .DataWidth  ( RespDataWidth ),
-    .ExtPrio    ( 1'b0          ),
+    .ExtPrio    ( ExtPrio       ),
     .BroadCastOn( 1'b0          )
   ) resp_xbar (
-    .clk_i  ( clk_i   ),
-    .rst_ni ( rst_ni  ),
-    .rr_i   ( '0      ),
-    .req_i  ( vld_i   ),
-    .gnt_o  ( rdy_o   ),
-    .add_i  ( idx_i   ),
-    .wdata_i( rdata_i ),
-    .req_o  ( vld_o   ),
-    .idx_o  (         ), // Unused
-    .gnt_i  ( rdy_i   ),
-    .wdata_o( rdata_o )
+    .clk_i  ( clk_i    ),
+    .rst_ni ( rst_ni   ),
+    .rr_i   ( rr_ret_i ),
+    .req_i  ( vld_i    ),
+    .gnt_o  ( rdy_o    ),
+    .add_i  ( idx_i    ),
+    .wdata_i( rdata_i  ),
+    .req_o  ( vld_o    ),
+    .idx_o  (          ), // Unused
+    .gnt_i  ( rdy_i    ),
+    .wdata_o( rdata_o  )
   );
 
   /******************

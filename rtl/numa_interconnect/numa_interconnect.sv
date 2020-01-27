@@ -18,13 +18,13 @@
 
 module numa_interconnect #(
     // Global parameters
-    parameter int unsigned NumIn          = 32         , // number of initiator ports (must be aligned with power of 2 for bfly and clos)
-    parameter int unsigned NumOut         = 64         , // number of target ports (must be aligned with power of 2 for bfly and clos)
-    parameter int unsigned AddrWidth      = 32         , // address width on initiator side
-    parameter int unsigned DataWidth      = 32         , // word width of data
-    parameter int unsigned BeWidth        = DataWidth/8, // width of corresponding byte enables
-    parameter int unsigned AddrMemWidth   = 12         , // number of address bits per TCDM bank
-    parameter int unsigned NumOutstanding = 2          , // number of outstanding transactions per target
+    parameter int unsigned NumIn          = 32                   , // number of initiator ports (must be aligned with power of 2 for bfly and clos)
+    parameter int unsigned NumOut         = 64                   , // number of target ports (must be aligned with power of 2 for bfly and clos)
+    parameter int unsigned AddrWidth      = 32                   , // address width on initiator side
+    parameter int unsigned DataWidth      = 32                   , // word width of data
+    parameter int unsigned BeWidth        = DataWidth/8          , // width of corresponding byte enables
+    parameter int unsigned AddrMemWidth   = 12                   , // number of address bits per TCDM bank
+    parameter int unsigned NumOutstanding = 2                    , // number of outstanding transactions per target
     // Determines the width of the byte offset in a memory word. normally this can be left at the default vaule,
     // but sometimes it needs to be overridden (e.g. when meta-data is supplied to the memory via the wdata signal).
     parameter int unsigned ByteOffWidth   = $clog2(DataWidth-1)-3,
@@ -111,24 +111,25 @@ module numa_interconnect #(
       .ReqDataWidth (AggDataWidth),
       .RespDataWidth(DataWidth   )
     ) i_xbar (
-      .clk_i  (clk_i         ),
-      .rst_ni (rst_ni        ),
-      .rr_i   ('0            ),
-      .req_i  (req_i         ),
-      .gnt_o  (gnt_o         ),
-      .add_i  (bank_sel      ),
-      .wdata_i(data_agg_in   ),
-      .vld_o  (vld_o         ),
-      .rdata_o(rdata_o       ),
-      .rdy_i  (rdy_i         ),
-      .req_o  (network_req   ),
-      .idx_o  (idx_o         ),
-      .gnt_i  (gnt_i         ),
-      .wdata_o(data_agg_out  ),
-      .vld_i  (~sl_fifo_empty),
-      .rdy_o  (sl_fifo_pop   ),
-      .idx_i  (sl_fifo_idx   ),
-      .rdata_i(sl_fifo_rdata )
+      .clk_i   (clk_i         ),
+      .rst_ni  (rst_ni        ),
+      .rr_i    ('0            ),
+      .rr_ret_i('0            ),
+      .req_i   (req_i         ),
+      .gnt_o   (gnt_o         ),
+      .add_i   (bank_sel      ),
+      .wdata_i (data_agg_in   ),
+      .vld_o   (vld_o         ),
+      .rdata_o (rdata_o       ),
+      .rdy_i   (rdy_i         ),
+      .req_o   (network_req   ),
+      .idx_o   (idx_o         ),
+      .gnt_i   (gnt_i         ),
+      .wdata_o (data_agg_out  ),
+      .vld_i   (~sl_fifo_empty),
+      .rdy_o   (sl_fifo_pop   ),
+      .idx_i   (sl_fifo_idx   ),
+      .rdata_i (sl_fifo_rdata )
     );
   end
   // Butterfly network (radix 2 or 4)
@@ -144,7 +145,8 @@ module numa_interconnect #(
     logic [NumOut-1:0] gnt1_trsp                    ;
     logic [NumOut-1:0] req1_trsp                    ;
 
-    logic [$clog2(NumOut)-1:0] rr;
+    logic [$clog2(NumOut)-1:0] rr    ;
+    logic [$clog2(NumOut)-1:0] rr_ret;
 
     // Although round robin arbitration works in some cases, it
     // it is quite likely that it interferes with linear access patterns
@@ -152,15 +154,15 @@ module numa_interconnect #(
     // pseudo random sequence with good randomness. the block cipher layers
     // are used to break shift register linearity.
     lfsr #(
-      .LfsrWidth   (64            ),
-      .OutWidth    ($clog2(NumOut)),
-      .CipherLayers(3             ),
-      .CipherReg   (1'b1          )
+      .LfsrWidth   (64              ),
+      .OutWidth    (2*$clog2(NumOut)),
+      .CipherLayers(3               ),
+      .CipherReg   (1'b1            )
     ) lfsr_i (
       .clk_i  ,
       .rst_ni ,
       .en_i  (|(gnt_i & req_o)),
-      .out_o (rr              )
+      .out_o ({rr_ret, rr}    )
     );
 
     numa_bfly_net #(
@@ -171,24 +173,25 @@ module numa_interconnect #(
       .Radix        (Radix       ),
       .ExtPrio      (1'b1        )
     ) i_bfly_net (
-      .clk_i  (clk_i         ),
-      .rst_ni (rst_ni        ),
-      .rr_i   (rr            ),
-      .req_i  (req_i         ),
-      .gnt_o  (gnt_o         ),
-      .add_i  (bank_sel      ),
-      .wdata_i(data_agg_in   ),
-      .vld_o  (vld_o         ),
-      .rdy_i  (rdy_i         ),
-      .rdata_o(rdata_o       ),
-      .req_o  (network_req   ),
-      .idx_o  (idx_o         ),
-      .gnt_i  (gnt_i         ),
-      .wdata_o(data_agg_out  ),
-      .vld_i  (~sl_fifo_empty),
-      .rdy_o  (sl_fifo_pop   ),
-      .idx_i  (sl_fifo_idx   ),
-      .rdata_i(sl_fifo_rdata )
+      .clk_i   (clk_i         ),
+      .rst_ni  (rst_ni        ),
+      .rr_i    (rr            ),
+      .rr_ret_i(rr_ret        ),
+      .req_i   (req_i         ),
+      .gnt_o   (gnt_o         ),
+      .add_i   (bank_sel      ),
+      .wdata_i (data_agg_in   ),
+      .vld_o   (vld_o         ),
+      .rdy_i   (rdy_i         ),
+      .rdata_o (rdata_o       ),
+      .req_o   (network_req   ),
+      .idx_o   (idx_o         ),
+      .gnt_i   (gnt_i         ),
+      .wdata_o (data_agg_out  ),
+      .vld_i   (~sl_fifo_empty),
+      .rdy_o   (sl_fifo_pop   ),
+      .idx_i   (sl_fifo_idx   ),
+      .rdata_i (sl_fifo_rdata )
     );
   // Clos network
   end else if (Topology == tcdm_interconnect_pkg::CLOS) begin : gen_clos
@@ -279,11 +282,11 @@ module numa_interconnect #(
 
   `ifndef SYNTHESIS
   initial begin
-    assert (AddrMemWidth + NumOutLog2 <= AddrWidth ) else
+    assert (AddrMemWidth + NumOutLog2 <= AddrWidth) else
       $fatal(1, "Address not wide enough to accomodate the requested TCDM configuration.");
 
     assert (Topology == tcdm_interconnect_pkg::LIC || NumOut >= NumIn) else
-      $fatal(1, "NumOut < NumIn is not supported." );
+      $fatal(1, "NumOut < NumIn is not supported.");
   end
   `endif
 
