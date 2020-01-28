@@ -25,6 +25,7 @@ module numa_interconnect #(
     parameter int unsigned BeWidth        = DataWidth/8          , // width of corresponding byte enables
     parameter int unsigned AddrMemWidth   = 12                   , // number of address bits per TCDM bank
     parameter int unsigned NumOutstanding = 2                    , // number of outstanding transactions per target
+    parameter bit unsigned WriteRespOn    = 1'b1                 , // defines whether the interconnect returns a write response
     // Determines the width of the byte offset in a memory word. normally this can be left at the default vaule,
     // but sometimes it needs to be overridden (e.g. when meta-data is supplied to the memory via the wdata signal).
     parameter int unsigned ByteOffWidth   = $clog2(DataWidth-1)-3,
@@ -265,8 +266,8 @@ module numa_interconnect #(
         usage_q[k]    <= '0;
         sl_fifo_pop_q <= '0;
       end else begin
-        usage_q[k]    <= usage_q[k] + gnt_i[k] - sl_fifo_pop_q;
-        sl_fifo_pop_q <= sl_fifo_pop[k]                       ;
+        usage_q[k]    <= usage_q[k] + (gnt_i[k] & (~wen_o[k] | WriteRespOn)) - sl_fifo_pop_q;
+        sl_fifo_pop_q <= sl_fifo_pop[k]                                                     ;
       end
     end
 
