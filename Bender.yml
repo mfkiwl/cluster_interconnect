@@ -2,7 +2,7 @@ package:
   name: cluster_interconnect
 
 dependencies:
-  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.15.0 }
+  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.16.2 }
 
 workspace:
   checkout_dir: "./deps"
