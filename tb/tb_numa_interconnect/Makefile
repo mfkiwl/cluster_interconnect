@@ -39,9 +39,8 @@ incdir         +="$(shell pwd)/../common/"+"$(shell pwd)/../../rtl/low_latency_i
 
 # points to DC folder
 dc-ver         ?= synopsys-2018.06 dc_shell
-synth-dir      := /usr/scratch2/toscana/michscha/projects/cluster_interconnect/tech/gf22/synopsys
+synth-dir      := /usr/scratch/riseten/matheusd/interco/interco/tech/gf22/synopsys
 synth-script   := scripts/synth.tcl
-
 
 # get sources
 src            := $(addprefix $(eval-root)/,$(shell xargs printf '\n%s' < $(src-list)  | cut -b 1-))
@@ -100,10 +99,10 @@ clean-all: clean batch-clean batch-clean-synth batch-clean-sim
 $(results-dir)/%_statistics.log:
 	$(eval $@: name := $(subst _statistics.log,,$(subst $(results-dir)/,, $@)))
 	mkdir -p $(name)
-	vlib${questa-ver} $(name)/$(library)
-	vlog${questa-ver} -work $(name)/$(library) -pedanticerrors $(src) $(tb-src) $(compile_flag) +incdir+$(incdir) $(addprefix +define+,$(subst $(name)-, , $(filter $(name)-%, $(batch-config)))) > $(name)/compile.log
+	${questa-ver} vlib $(name)/$(library)
+	${questa-ver} vlog -work $(name)/$(library) -pedanticerrors $(src) $(tb-src) $(compile_flag) +incdir+$(incdir) $(addprefix +define+,$(subst $(name)-, , $(filter $(name)-%, $(batch-config)))) > $(name)/compile.log
 	@echo $(name) started
-	cd $(name) && vsim${questa-ver} -lib $(library) $(top-sim) -c -do "run -all; exit" $(sim_opts_batch) > /dev/null
+	cd $(name) && ${questa-ver} vsim -lib $(library) $(top-sim) -c -do "run -all; exit" $(sim_opts_batch) > /dev/null
 	@echo $(name) finished
 	cp $(name)/transcript     $(results-dir)/$(name)_transcript.log
 	cp $(name)/statistics.log $(results-dir)/$(name)_statistics.log
@@ -113,7 +112,7 @@ batch-sim:
 	$(MAKE) $(addprefix $(results-dir)/, $(addsuffix _statistics.log, $(batch-name)))
 
 # mini prep script for DC that sets the required variables and calls a generic synthesis script
-dc-cmd = "set SRC {$(src)};                                                        \
+dc-cmd = "set SRC {$(src)};                                                      \
 	        set TOP_ENTITY $(top-synth);                                           \
 	        set NAME $(name);                                                      \
 	        set INCDIR $(incdir);                                                  \

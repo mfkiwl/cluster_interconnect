@@ -31,7 +31,6 @@ module numa_tb;
   localparam DataWidth   = `DATA_WIDTH;
   localparam MemAddrBits = `MEM_ADDR_BITS;
   localparam TestCycles  = `TEST_CYCLES;
-  localparam NumPar      = `PAR_STAGES;             // for parallel bfly only
 
   localparam StatsFile = "statistics.log";
 
@@ -273,11 +272,7 @@ module numa_tb;
   // MUT
   ///////////////////////////////////////////////////////////////////////////////
 
-  if (MutImpl >= 1 && MutImpl <= 2) begin : g_bfly
-    assign mut_name = {impl[MutImpl], $psprintf("_n%0d", NumPar)};
-  end else begin : g_others
-    assign mut_name = impl[MutImpl];
-  end
+  assign mut_name = impl[MutImpl];
 
   // parameters are overriden via defines
   // this is used to share the same wrapper
@@ -323,7 +318,6 @@ module numa_tb;
     $display("---------------------------------------");
     $display("Current configuration:"                 );
     $display("Network:        %s", mut_name           );
-    $display("NumPar:         %0d", NumPar            );
     $display("NumMaster:      %0d", NumMaster         );
     $display("NumBanks:       %0d", NumBanks          );
     $display("DataWidth:      %0d", DataWidth         );
