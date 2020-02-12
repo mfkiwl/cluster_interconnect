@@ -156,7 +156,7 @@ module numa_bfly_net #(
         assign gnt_o[j/Radix]                      = router_gnt_out[0][j/Radix][j%Radix] ;
         assign router_add_in[0][j/Radix][j%Radix]  = add_i[j/Radix]                      ;
         assign router_data_in[0][j/Radix][j%Radix] = wdata_i[j/Radix]                    ;
-        assign router_rdy_in[0][j/Radix][j%Radix]  = rdy_i[j/BankFact]                   ;
+        assign router_rdy_in[0][j/Radix][j%Radix]  = rdy_i[j/Radix]                      ;
 
         // resp
         assign rdata_o[j/Radix] = router_resp_data_out[0][j/Radix][j%Radix];
