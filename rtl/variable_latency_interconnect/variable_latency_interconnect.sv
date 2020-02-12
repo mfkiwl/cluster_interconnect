@@ -40,26 +40,26 @@ module variable_latency_interconnect #(
     input  logic                                 clk_i,
     input  logic                                 rst_ni,
     // Initiator side
-    input  logic [NumIn-1:0]                     req_i,   // Request signal
-    output logic [NumIn-1:0]                     gnt_o,   // Grant signal
-    input  logic [NumIn-1:0][AddrWidth-1:0]      add_i,   // Target address
-    input  logic [NumIn-1:0]                     wen_i,   // Write enable
-    input  logic [NumIn-1:0][DataWidth-1:0]      wdata_i, // Write data
-    input  logic [NumIn-1:0][BeWidth-1:0]        be_i,    // Byte enable
-    output logic [NumIn-1:0]                     vld_o,   // Response valid
-    input  logic [NumIn-1:0]                     rdy_i,   // Response ready
-    output logic [NumIn-1:0][DataWidth-1:0]      rdata_o, // Data response (for load commands)
+    input  logic [NumIn-1:0]                     req_i,     // Request signal
+    output logic [NumIn-1:0]                     gnt_o,     // Grant signal
+    input  logic [NumIn-1:0][AddrWidth-1:0]      add_i,     // Target address
+    input  logic [NumIn-1:0]                     wen_i,     // Write enable
+    input  logic [NumIn-1:0][DataWidth-1:0]      wdata_i,   // Write data
+    input  logic [NumIn-1:0][BeWidth-1:0]        be_i,      // Byte enable
+    output logic [NumIn-1:0]                     vld_o,     // Response valid
+    input  logic [NumIn-1:0]                     rdy_i,     // Response ready
+    output logic [NumIn-1:0][DataWidth-1:0]      rdata_o,   // Data response (for load commands)
     // Target side
-    output logic [NumOut-1:0]                    req_o,   // Request signal
-    output logic [NumOut-1:0][$clog2(NumIn)-1:0] idx_o,   // Initiator address
-    input  logic [NumOut-1:0]                    gnt_i,   // Grant signal
-    output logic [NumOut-1:0][AddrMemWidth-1:0]  add_o,   // Target address
-    output logic [NumOut-1:0]                    wen_o,   // Write enable
-    output logic [NumOut-1:0][DataWidth-1:0]     wdata_o, // Write data
-    output logic [NumOut-1:0][BeWidth-1:0]       be_o,    // Byte enable
-    input  logic [NumOut-1:0]                    vld_i,   // Response valid
-    input  logic [NumOut-1:0][$clog2(NumIn)-1:0] idx_i,   // Initiator address (response)
-    input  logic [NumOut-1:0][DataWidth-1:0]     rdata_i  // Data response (for load commands)
+    output logic [NumOut-1:0]                    req_o,     // Request signal
+    output logic [NumOut-1:0][$clog2(NumIn)-1:0] ini_add_o, // Initiator address
+    input  logic [NumOut-1:0]                    gnt_i,     // Grant signal
+    output logic [NumOut-1:0][AddrMemWidth-1:0]  add_o,     // Target address
+    output logic [NumOut-1:0]                    wen_o,     // Write enable
+    output logic [NumOut-1:0][DataWidth-1:0]     wdata_o,   // Write data
+    output logic [NumOut-1:0][BeWidth-1:0]       be_o,      // Byte enable
+    input  logic [NumOut-1:0]                    vld_i,     // Response valid
+    input  logic [NumOut-1:0][$clog2(NumIn)-1:0] ini_add_i, // Initiator address (response)
+    input  logic [NumOut-1:0][DataWidth-1:0]     rdata_i    // Data response (for load commands)
   );
 
   /******************
@@ -77,7 +77,7 @@ module variable_latency_interconnect #(
   logic [NumIn-1:0][NumOutLog2-1:0]    bank_sel;
 
   logic [NumOut-1:0][DataWidth-1:0]     tgt_fifo_rdata;
-  logic [NumOut-1:0][$clog2(NumIn)-1:0] tgt_fifo_idx;
+  logic [NumOut-1:0][$clog2(NumIn)-1:0] tgt_fifo_ini_add;
   logic [NumOut-1:0]                    tgt_fifo_full;
   logic [NumOut-1:0]                    tgt_fifo_empty;
   logic [NumOut-1:0]                    tgt_fifo_pop;
@@ -109,28 +109,28 @@ module variable_latency_interconnect #(
       .ReqDataWidth (AggDataWidth),
       .RespDataWidth(DataWidth   )
     ) i_xbar (
-      .clk_i    (clk_i          ),
-      .rst_ni   (rst_ni         ),
+      .clk_i    (clk_i           ),
+      .rst_ni   (rst_ni          ),
       // Extern priority flags
-      .req_rr_i ('0             ),
-      .resp_rr_i('0             ),
+      .req_rr_i ('0              ),
+      .resp_rr_i('0              ),
       // Initiator side
-      .req_i    (req_i          ),
-      .gnt_o    (gnt_o          ),
-      .add_i    (bank_sel       ),
-      .wdata_i  (data_agg_in    ),
-      .vld_o    (vld_o          ),
-      .rdata_o  (rdata_o        ),
-      .rdy_i    (rdy_i          ),
+      .req_i    (req_i           ),
+      .gnt_o    (gnt_o           ),
+      .add_i    (bank_sel        ),
+      .wdata_i  (data_agg_in     ),
+      .vld_o    (vld_o           ),
+      .rdata_o  (rdata_o         ),
+      .rdy_i    (rdy_i           ),
       // Target side
-      .req_o    (tgt_xbar_req   ),
-      .idx_o    (idx_o          ),
-      .gnt_i    (gnt_i          ),
-      .wdata_o  (data_agg_out   ),
-      .vld_i    (~tgt_fifo_empty),
-      .rdy_o    (tgt_fifo_pop   ),
-      .idx_i    (tgt_fifo_idx   ),
-      .rdata_i  (tgt_fifo_rdata )
+      .req_o    (tgt_xbar_req    ),
+      .ini_add_o(ini_add_o       ),
+      .gnt_i    (gnt_i           ),
+      .wdata_o  (data_agg_out    ),
+      .vld_i    (~tgt_fifo_empty ),
+      .rdy_o    (tgt_fifo_pop    ),
+      .ini_add_i(tgt_fifo_ini_add),
+      .rdata_i  (tgt_fifo_rdata  )
     );
   end
 
@@ -175,28 +175,28 @@ module variable_latency_interconnect #(
       .Radix        (Radix       ),
       .ExtPrio      (1'b1        )
     ) i_bfly_net (
-      .clk_i    (clk_i          ),
-      .rst_ni   (rst_ni         ),
+      .clk_i    (clk_i           ),
+      .rst_ni   (rst_ni          ),
       // Extern priority flags
-      .req_rr_i (req_rr         ),
-      .resp_rr_i(resp_rr        ),
+      .req_rr_i (req_rr          ),
+      .resp_rr_i(resp_rr         ),
       // Initiator side
-      .req_i    (req_i          ),
-      .gnt_o    (gnt_o          ),
-      .add_i    (bank_sel       ),
-      .wdata_i  (data_agg_in    ),
-      .vld_o    (vld_o          ),
-      .rdy_i    (rdy_i          ),
-      .rdata_o  (rdata_o        ),
+      .req_i    (req_i           ),
+      .gnt_o    (gnt_o           ),
+      .add_i    (bank_sel        ),
+      .wdata_i  (data_agg_in     ),
+      .vld_o    (vld_o           ),
+      .rdy_i    (rdy_i           ),
+      .rdata_o  (rdata_o         ),
       // Target side
-      .req_o    (tgt_xbar_req   ),
-      .idx_o    (idx_o          ),
-      .gnt_i    (gnt_i          ),
-      .wdata_o  (data_agg_out   ),
-      .vld_i    (~tgt_fifo_empty),
-      .rdy_o    (tgt_fifo_pop   ),
-      .idx_i    (tgt_fifo_idx   ),
-      .rdata_i  (tgt_fifo_rdata )
+      .req_o    (tgt_xbar_req    ),
+      .ini_add_o(ini_add_o       ),
+      .gnt_i    (gnt_i           ),
+      .wdata_o  (data_agg_out    ),
+      .vld_i    (~tgt_fifo_empty ),
+      .rdy_o    (tgt_fifo_pop    ),
+      .ini_add_i(tgt_fifo_ini_add),
+      .rdata_i  (tgt_fifo_rdata  )
     );
   end
 
@@ -236,17 +236,17 @@ module variable_latency_interconnect #(
       .DEPTH       (NumOutstanding           ),
       .FALL_THROUGH(TargetQueueFallThrough   )
     ) i_target_queue (
-      .clk_i     (clk_i                               ),
-      .rst_ni    (rst_ni                              ),
-      .flush_i   (1'b0                                ),
-      .testmode_i(1'b0                                ),
-      .data_i    ({rdata_i[k], idx_i[k]}              ),
-      .push_i    (vld_i[k]                            ),
-      .full_o    (/* Unused */                        ),
-      .data_o    ({tgt_fifo_rdata[k], tgt_fifo_idx[k]}),
-      .pop_i     (tgt_fifo_pop[k]                     ),
-      .empty_o   (tgt_fifo_empty[k]                   ),
-      .usage_o   (/* Unused */                        )
+      .clk_i     (clk_i                                   ),
+      .rst_ni    (rst_ni                                  ),
+      .flush_i   (1'b0                                    ),
+      .testmode_i(1'b0                                    ),
+      .data_i    ({rdata_i[k], ini_add_i[k]}              ),
+      .push_i    (vld_i[k]                                ),
+      .full_o    (/* Unused */                            ),
+      .data_o    ({tgt_fifo_rdata[k], tgt_fifo_ini_add[k]}),
+      .pop_i     (tgt_fifo_pop[k]                         ),
+      .empty_o   (tgt_fifo_empty[k]                       ),
+      .usage_o   (/* Unused */                            )
     );
 
     // Count inflight transactions

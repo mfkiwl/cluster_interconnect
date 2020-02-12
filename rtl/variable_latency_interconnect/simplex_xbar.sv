@@ -25,15 +25,15 @@ module simplex_xbar #(
     // External priority signal
     input  logic [NumOut-1:0][$clog2(NumIn)-1:0] rr_i,
     // Initiator side
-    input  logic [NumIn-1:0]                     req_i,   // Request signal
-    output logic [NumIn-1:0]                     gnt_o,   // Grant signal
-    input  logic [NumIn-1:0][$clog2(NumOut)-1:0] add_i,   // Target address
-    input  logic [NumIn-1:0][DataWidth-1:0]      wdata_i, // Write data
+    input  logic [NumIn-1:0]                     req_i,     // Request signal
+    output logic [NumIn-1:0]                     gnt_o,     // Grant signal
+    input  logic [NumIn-1:0][$clog2(NumOut)-1:0] add_i,     // Target address
+    input  logic [NumIn-1:0][DataWidth-1:0]      wdata_i,   // Write data
     // Target side
-    output logic [NumOut-1:0]                    req_o,   // Request signal
-    input  logic [NumOut-1:0]                    gnt_i,   // Grant signal
-    output logic [NumOut-1:0][$clog2(NumIn)-1:0] idx_o,   // Requestor address
-    output logic [NumOut-1:0][DataWidth-1:0]     wdata_o  // Write data
+    output logic [NumOut-1:0]                    req_o,     // Request signal
+    input  logic [NumOut-1:0]                    gnt_i,     // Grant signal
+    output logic [NumOut-1:0][$clog2(NumIn)-1:0] ini_add_o, // Initiator address
+    output logic [NumOut-1:0][DataWidth-1:0]     wdata_o    // Write data
   );
 
   /*************
@@ -95,17 +95,17 @@ module simplex_xbar #(
         .DataWidth(DataWidth),
         .ExtPrio  (ExtPrio  )
       ) i_rr_arb_tree (
-        .clk_i  (clk_i      ),
-        .rst_ni (rst_ni     ),
-        .flush_i(1'b0       ),
-        .rr_i   (rr_i[k]    ),
-        .req_i  (tgt_req[k] ),
-        .gnt_o  (tgt_gnt[k] ),
-        .data_i (tgt_data[k]),
-        .gnt_i  (gnt_i[k]   ),
-        .req_o  (req_o[k]   ),
-        .data_o (wdata_o[k] ),
-        .idx_o  (idx_o[k]   )
+        .clk_i  (clk_i        ),
+        .rst_ni (rst_ni       ),
+        .flush_i(1'b0         ),
+        .rr_i   (rr_i[k]      ),
+        .req_i  (tgt_req[k]   ),
+        .gnt_o  (tgt_gnt[k]   ),
+        .data_i (tgt_data[k]  ),
+        .gnt_i  (gnt_i[k]     ),
+        .req_o  (req_o[k]     ),
+        .data_o (wdata_o[k]   ),
+        .idx_o  (ini_add_o[k] )
       );
 
     end
