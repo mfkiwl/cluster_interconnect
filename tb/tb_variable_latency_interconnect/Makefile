@@ -7,18 +7,17 @@
 # this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 # CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
-#
+
 # Author: Michael Schaffner <schaffner@iis.ee.ethz.ch>, ETH Zurich
 # Date: 21.03.2019
 # Description: Makefile for the interconnect testbench.
 
-#
 eval-root      := $(shell pwd)
 
 results-dir    ?= sim-results
 library        := work
-top-sim        := numa_tb
-top-synth      := numa_interconnect_wrap
+top-sim        := variable_latency_interconnect_tb
+top-synth      := variable_latency_interconnect_wrap
 
 batch-list     ?= scripts/batch.list
 src-list       := scripts/src.list
@@ -30,11 +29,8 @@ vcs-ver        ?= -2017.03
 
 compile_flag   += -suppress 13262 -suppress 2583
 compile-flag-vcs   += -full64 -sverilog +systemverilogext+.sv -timescale=1ps/1ps
-# +cover+i_dut -incr -64 -nologo -quiet
 sim_opts       += -64 -voptargs="+acc"
 sim_opts_batch += -64
-#-voptargs="+acc" -64
-#-coverage -classdebug -voptargs="+acc"
 incdir         +="$(shell pwd)/../common/"+"$(shell pwd)/../../rtl/low_latency_interco"+"$(shell pwd)/../../rtl/low_latency_interco"+"$(shell pwd)/hdl/"
 
 # points to DC folder
@@ -52,7 +48,7 @@ batch-config := $(shell cat $(batch-list) | grep -v '\#' | cut -d - -f 1-)
 
 build: clean
 	${questa-ver} vlib $(library)
-	bender vsim -t rtl -t asic -t numa_test --flag "\-timescale=1ps/1ps" -b .
+	bender vsim -t rtl -t asic -t variable_latency_test --flag "\-timescale=1ps/1ps" -b .
 
 # this starts modelsim with gui
 sim: build
@@ -61,18 +57,6 @@ sim: build
 # batch mode without gui
 simc: build
 	${questa-ver} vsim -lib $(library) $(top-sim) -c -do "run -all; exit" $(sim_opts_batch)
-
-build-vcs: clean
-	vcs${vcs-ver} vcs $(src) $(tb-src) $(compile-flag-vcs) +incdir+$(incdir)
-
-# TODO: implement VCS runs
-# this starts vcs with gui
-# sim-vcs: build-vcs
-# 	${questa-ver} vsim -lib $(library) $(top-sim) -do "do wave.do" $(sim_opts)
-
-# # batch mode without gui
-# simc-vcs: build-vcs
-# 	${questa-ver} vsim -lib $(library) $(top-sim) -c -do "run -all; exit" $(sim_opts_batch)
 
 clean:
 	rm -rf $(library)
@@ -87,7 +71,6 @@ batch-clean-synth:
 	rm -rf $(addprefix $(results-dir)/, $(addsuffix _timing.rpt, $(batch-name)))
 	rm -rf $(addprefix $(results-dir)/, $(addsuffix _power.rpt, $(batch-name)))
 	rm -rf $(addprefix $(results-dir)/, $(addsuffix _area.rpt, $(batch-name)))
-
 
 batch-clean:
 	rm -rf $(batch-name)
@@ -112,7 +95,7 @@ batch-sim:
 	$(MAKE) $(addprefix $(results-dir)/, $(addsuffix _statistics.log, $(batch-name)))
 
 # mini prep script for DC that sets the required variables and calls a generic synthesis script
-dc-cmd = "set SRC {$(src)};                                                      \
+dc-cmd =   "set SRC {$(src)};                                                      \
 	        set TOP_ENTITY $(top-synth);                                           \
 	        set NAME $(name);                                                      \
 	        set INCDIR $(incdir);                                                  \

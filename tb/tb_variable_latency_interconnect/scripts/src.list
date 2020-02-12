@@ -25,8 +25,9 @@
 ../../rtl/tcdm_interconnect/bfly_net.sv
 ../../rtl/tcdm_interconnect/clos_net.sv
 ../../rtl/tcdm_interconnect/tcdm_interconnect.sv
-../../rtl/numa_interconnect/unidirectional_xbar.sv
-../../rtl/numa_interconnect/numa_xbar.sv
-../../rtl/numa_interconnect/numa_bfly_net.sv
-../../rtl/numa_interconnect/numa_interconnect.sv
-hdl/numa_interconnect_wrap.sv
+../../rtl/variable_latency_interconnect/addr_decoder.sv
+../../rtl/variable_latency_interconnect/simplex_xbar.sv
+../../rtl/variable_latency_interconnect/full_duplex_xbar.sv
+../../rtl/variable_latency_interconnect/variable_latency_bfly_net.sv
+../../rtl/variable_latency_interconnect/variable_latency_interconnect.sv
+hdl/variable_latency_interconnect_wrap.sv

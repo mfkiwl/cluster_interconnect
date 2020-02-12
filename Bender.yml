@@ -41,14 +41,14 @@ sources:
       # Level 2
       - tb/tb_tcdm_interconnect/hdl/tb.sv
 
-  - target: numa_test
+  - target: variable_latency_test
     include_dirs:
       - tb/common/
-      - tb/tb_numa_interconnect/hdl
+      - tb/tb_variable_latency_interconnect/hdl
     files:
       # Level 0
-      - tb/tb_numa_interconnect/hdl/tb_pkg.sv
+      - tb/tb_variable_latency_interconnect/hdl/tb_pkg.sv
       # Level 2
-      - tb/tb_numa_interconnect/hdl/numa_interconnect_wrap.sv
+      - tb/tb_variable_latency_interconnect/hdl/variable_latency_interconnect_wrap.sv
       # Level 2
-      - tb/tb_numa_interconnect/hdl/numa_tb.sv
+      - tb/tb_variable_latency_interconnect/hdl/variable_latency_interconnect_tb.sv
