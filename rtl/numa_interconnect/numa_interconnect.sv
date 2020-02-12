@@ -18,24 +18,21 @@
 
 module numa_interconnect #(
     // Global parameters
-    parameter int unsigned NumIn          = 32                   , // number of initiator ports (must be aligned with power of 2 for bfly and clos)
-    parameter int unsigned NumOut         = 64                   , // number of target ports (must be aligned with power of 2 for bfly and clos)
-    parameter int unsigned AddrWidth      = 32                   , // address width on initiator side
-    parameter int unsigned DataWidth      = 32                   , // word width of data
-    parameter int unsigned BeWidth        = DataWidth/8          , // width of corresponding byte enables
-    parameter int unsigned AddrMemWidth   = 12                   , // number of address bits per TCDM bank
-    parameter int unsigned NumOutstanding = 2                    , // number of outstanding transactions per target
-    parameter bit unsigned WriteRespOn    = 1'b1                 , // defines whether the interconnect returns a write response
+    parameter int unsigned NumIn                  = 32                   , // number of initiator ports (must be aligned with power of 2 for bfly and clos)
+    parameter int unsigned NumOut                 = 64                   , // number of target ports (must be aligned with power of 2 for bfly and clos)
+    parameter int unsigned AddrWidth              = 32                   , // address width on initiator side
+    parameter int unsigned DataWidth              = 32                   , // word width of data
+    parameter int unsigned BeWidth                = DataWidth/8          , // width of corresponding byte enables
+    parameter int unsigned AddrMemWidth           = 12                   , // number of address bits per TCDM bank
+    parameter int unsigned NumOutstanding         = 4                    , // number of outstanding transactions per target
+    parameter bit unsigned WriteRespOn            = 1'b1                 , // defines whether the interconnect returns a write response
+    parameter bit unsigned TargetQueueFallThrough = 1'b0                 ,
     // Determines the width of the byte offset in a memory word. normally this can be left at the default vaule,
     // but sometimes it needs to be overridden (e.g. when meta-data is supplied to the memory via the wdata signal).
-    parameter int unsigned ByteOffWidth   = $clog2(DataWidth-1)-3,
+    parameter int unsigned ByteOffWidth           = $clog2(DataWidth-1)-3,
 
     // Topology can be: LIC, BFLY2, BFLY4, CLOS
-    parameter tcdm_interconnect_pkg::topo_e Topology = tcdm_interconnect_pkg::LIC,
-    // This detemines which Clos config to use, only relevant for CLOS topologies
-    // 1: m=0.50*n, 2: m=1.00*n, 3: m=2.00*n
-    parameter int unsigned ClosConfig                = 2
-  ///////////////////////////
+    parameter tcdm_interconnect_pkg::topo_e Topology = tcdm_interconnect_pkg::LIC
   ) (
     input  logic                                 clk_i,
     input  logic                                 rst_ni,
@@ -160,8 +157,8 @@ module numa_interconnect #(
       .CipherLayers(3               ),
       .CipherReg   (1'b1            )
     ) lfsr_i (
-      .clk_i  ,
-      .rst_ni ,
+      .clk_i (clk_i           ),
+      .rst_ni(rst_ni          ),
       .en_i  (|(gnt_i & req_o)),
       .out_o ({rr_ret, rr}    )
     );
@@ -195,33 +192,6 @@ module numa_interconnect #(
       .rdata_i (sl_fifo_rdata )
     );
   // Clos network
-  end else if (Topology == tcdm_interconnect_pkg::CLOS) begin : gen_clos
-    numa_clos_net #(
-      .NumIn        (NumIn       ),
-      .NumOut       (NumOut      ),
-      .ReqDataWidth (AggDataWidth),
-      .RespDataWidth(DataWidth   ),
-      .ClosConfig   (ClosConfig  )
-    ) i_clos_net (
-      .clk_i  (clk_i         ),
-      .rst_ni (rst_ni        ),
-      .req_i  (req_i         ),
-      .gnt_o  (gnt_o         ),
-      .add_i  (bank_sel      ),
-      .wdata_i(data_agg_in   ),
-      .vld_o  (vld_o         ),
-      .rdy_i  (rdy_i         ),
-      .rdata_o(rdata_o       ),
-      .req_o  (network_req   ),
-      .idx_o  (idx_o         ),
-      .gnt_i  (gnt_i         ),
-      .wdata_o(data_agg_out  ),
-      .vld_i  (~sl_fifo_empty),
-      .rdy_o  (sl_fifo_pop   ),
-      .idx_i  (sl_fifo_idx   ),
-      .rdata_i(sl_fifo_rdata )
-    );
-  // Unknown topology
   end else begin : gen_unknown
     `ifndef SYNTHESIS
     initial begin
@@ -230,18 +200,27 @@ module numa_interconnect #(
     `endif
   end
 
-
   /*********************
    *   TARGET QUEUES   *
    *********************/
 
-  logic [NumOut-1:0][TransactionIdx:0] usage_q;
+  logic [NumOut-1:0][TransactionIdx:0] usage_d, usage_q;
+  logic [NumOut-1:0]                   sl_fifo_pop_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      sl_fifo_pop_q <= '0;
+    end else begin
+      sl_fifo_pop_q <= sl_fifo_pop;
+    end
+  end
 
   for (genvar k = 0; k < NumOut; k++) begin: gen_target_queues
 
     fifo_v3 #(
-      .DATA_WIDTH (DataWidth + $clog2(NumIn)),
-      .DEPTH      (NumOutstanding           )
+      .DATA_WIDTH  (DataWidth + $clog2(NumIn)               ),
+      .DEPTH       (NumOutstanding + !TargetQueueFallThrough),
+      .FALL_THROUGH(TargetQueueFallThrough                  )
     ) i_target_queue (
       .clk_i     (clk_i                             ),
       .rst_ni    (rst_ni                            ),
@@ -257,17 +236,30 @@ module numa_interconnect #(
     );
 
     // Count in-flight transactions
-    logic sl_fifo_pop_q;
-
     assign sl_fifo_full[k] = (usage_q[k] == NumOutstanding);
+
+    always_comb begin
+      usage_d[k] = usage_q[k];
+
+      if (gnt_i[k] & (~wen_o[k] | WriteRespOn))
+        usage_d[k] = usage_d[k] + 1'b1;
+
+      if (TargetQueueFallThrough) begin
+        // The position in the FIFO is freed at the same cycle
+        if (sl_fifo_pop[k])
+          usage_d[k] = usage_d[k] - 1'b1;
+      end else begin
+        // Must wait a cycle before freeing the position
+        if (sl_fifo_pop_q[k])
+          usage_d[k] = usage_d[k] - 1'b1;
+      end
+    end
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
-        usage_q[k]    <= '0;
-        sl_fifo_pop_q <= '0;
+        usage_q[k] <= '0;
       end else begin
-        usage_q[k]    <= usage_q[k] + (gnt_i[k] & (~wen_o[k] | WriteRespOn)) - sl_fifo_pop_q;
-        sl_fifo_pop_q <= sl_fifo_pop[k]                                                     ;
+        usage_q[k] <= usage_d[k];
       end
     end
 
